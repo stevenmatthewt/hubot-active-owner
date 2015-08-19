@@ -31,38 +31,47 @@ describe 'Hubot with active-owner script', ->
     @robot.shutdown
 
   describe 'on review-complete events', ->
-    beforeEach ->
-      @adapter.receive new TextMessage @user, 'TestHubot add Team America to teams'
-      @adapter.receive new TextMessage @user, 'TestHubot add The Mighty Ducks to teams'
-      @adapter.receive new TextMessage @user, "TestHubot I'm AO for Team America"
-      @robot.emit 'review-needed',
-        url: 'http://www.github.com/a/b/pull/1'
-        repo: 'a/b'
-        number: 1
-        key: 'a/b/1'
+    beforeEach (done) ->
+      robot = @robot
+      user = @user
+      @robot.receive (new TextMessage user, 'TestHubot add Team America to teams'), ->
+      	robot.receive (new TextMessage user, 'TestHubot add The Mighty Ducks to teams'), ->
+      		robot.receive (new TextMessage user, "TestHubot I'm AO for Team America"), ->
+      			robot.emit 'review-needed',
+        			url: 'http://www.github.com/a/b/pull/1'
+        			repo: 'a/b'
+        			number: 1
+        			key: 'a/b/1'
+        		done()
+
+      
 
     it 'should message AOs that review is no longer needed, with PR link', (done) ->
-      @adapter.receive new TextMessage @user, "TestHubot assign Charlie as AO for The Mighty Ducks"
-      verifyAlertedUsers = ->
-        if alertedUsers.indexOf('1') >= 0 && alertedUsers.indexOf('2') >= 0
-          done()
-      finished = _.after 2, verifyAlertedUsers
-      alertedUsers = []
-      @adapter.on 'reply', (envelope, strings) ->
-        expect(strings[0]).to.equal("Review no longer needed for http://www.github.com/a/b/pull/1. The PR either was closed or review label was removed.")
-        alertedUsers.push(envelope.id)
-        finished()
-      @robot.emit 'review-complete',
-        url: 'http://www.github.com/a/b/pull/1'
-        repo: 'a/b'
-        number: 1
-        key: 'a/b/1'
+      adapter = @adapter
+      robot = @robot
+      @robot.receive (new TextMessage @user, "TestHubot assign Charlie as AO for The Mighty Ducks"), ->
+        verifyAlertedUsers = ->
+          if alertedUsers.indexOf('1') >= 0 && alertedUsers.indexOf('2') >= 0
+            done()
+        finished = _.after 2, verifyAlertedUsers
+        alertedUsers = []
+        adapter.on 'reply', (envelope, strings) ->
+          console.log("reply")
+          expect(strings[0]).to.equal("Review no longer needed for http://www.github.com/a/b/pull/1. The PR either was closed or review label was removed.")
+          alertedUsers.push(envelope.id)
+          finished()
+        console.log("potential-review-complete")
+        robot.emit 'potential-review-complete',
+          url: 'http://www.github.com/a/b/pull/1'
+          repo: 'a/b'
+          number: 1
+          key: 'a/b/1'
 
     it 'should remove the PR that is no longer in need of review', (done) ->
       @adapter.on 'reply', (envelope, strings) ->
         expect(@robot.brain.data.reviews).not.to.contain.keys('a/b/1')
         done()
-      @robot.emit 'review-complete',
+      @robot.emit 'potential-review-complete',
         url: 'http://www.github.com/a/b/pull/1'
         repo: 'a/b'
         number: 1

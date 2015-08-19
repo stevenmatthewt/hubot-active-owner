@@ -31,7 +31,7 @@ describe 'Hubot with active-owner script', ->
 
   afterEach ->
     @robot.server.close()
-    @robot.shutdown
+    @robot.shutdown()
 
   describe 'managing teams', ->
     it 'should add a new team', (done) ->
@@ -62,9 +62,12 @@ describe 'Hubot with active-owner script', ->
         'TestHubot delete Team America from teams'
 
   describe 'managing AOs', ->
-    beforeEach ->
+    beforeEach (done) ->
+      @adapter.once 'send', (envelope, strings) ->
+        done()
       @adapter.receive new TextMessage @user,
         'TestHubot add Team America to teams'
+      
 
     it 'should assign a known person to a known team', (done) ->
       @adapter.on 'send', (envelope, strings) ->
@@ -109,30 +112,33 @@ describe 'Hubot with active-owner script', ->
       @adapter.receive new TextMessage @user, 'TestHubot show AOs'
     
     it 'should list all AOs', (done) ->
-      @adapter.receive new TextMessage @user,
-        'TestHubot add Team America to teams'
-      @adapter.receive new TextMessage @user,
-        'TestHubot add The Mighty Ducks to teams'
-      @adapter.receive new TextMessage @user,
-        'TestHubot add Team Knight Rider to teams'
-      @adapter.receive new TextMessage @user,
-        "TestHubot I'm AO for Team America"
-      @adapter.receive new TextMessage @user,
-        "TestHubot assign Charlie as AO for The Mighty Ducks"
-      @adapter.on 'send', (envelope, strings) ->
-        expResp = """
+      robot = @robot
+      user = @user
+      adapter = @adapter
+      robot.receive (new TextMessage user,
+        'TestHubot add Team America to teams'), ->
+          robot.receive (new TextMessage user,
+          'TestHubot add The Mighty Ducks to teams'), ->
+            robot.receive (new TextMessage user,
+            'TestHubot add Team Knight Rider to teams'), ->
+              robot.receive (new TextMessage user,
+              "TestHubot I'm AO for Team America"), ->
+                robot.receive (new TextMessage user,
+                "TestHubot assign Charlie as AO for The Mighty Ducks"), ->
+                  adapter.on 'send', (envelope, strings) ->
+                    expResp = """
 	AOs:
 	@Gary has been active owner on Team America for a few seconds
 	Charlie has been active owner on The Mighty Ducks for a few seconds
 	* Team Knight Rider has no active owner! 
 	
 	Use: \'Assign <user> as AO for <team>\' to assign an AO.
-        """
-        expect(strings[0]).to.equal(expResp)
-        done()
-      @adapter.receive new TextMessage @user, 'TestHubot show AOs'
+"""
+                    expect(strings[0]).to.equal(expResp)
+                    done()
+                  adapter.receive new TextMessage user, 'TestHubot show AOs'
 
-  describe 'managineg the review list', ->
+  describe 'managing the review list', ->
     it 'should show needed reviews', (done) ->
       @adapter.on 'send', (envelope, strings) ->
         expResp = """

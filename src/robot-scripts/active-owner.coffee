@@ -10,6 +10,7 @@
 #   hubot show review list - displays the list of PRs currently needing reveiw
 #   hubot assign [user] as AO for [team] - assign a user as AO for a team
 #   hubot I'm AO for [team]- assign yourself as AO for a team
+#   hubot Add [team] to teams - add a team
 moment = require 'moment'
 _ = require 'lodash'
 AOHelper = require('../ActiveOwnerHelper')
